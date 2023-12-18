@@ -2,7 +2,7 @@ import connectDB from "./db/index.js";
 
 import app from "./app.js";
 import { ApiResponse } from "./utils/ApiResponse.js";
-import { ApiErros } from "./utils/ApiError.js";
+import { ApiError } from "./utils/ApiError.js";
 
 
 
