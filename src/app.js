@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 
+
 dotenv.config({
   path: "./.env",
 });
@@ -21,10 +22,10 @@ app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(express.static("public"));
 app.use(cookieParser());
 
-
-//importing router 
+//importing router
 import userRouter from "./routes/user.router.js";
 
-app.use("/api/users",userRouter);
+app.use("/api/users", userRouter);
+
 
 export default app;
