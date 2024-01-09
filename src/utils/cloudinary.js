@@ -31,11 +31,11 @@ const uploadOnCloudinary = async (localFilePath) => {
   }
 };
 
-const deleteImageOnCloudinray = async (publicId) => {
+const deleteOnCloudinray = async (publicId,type="image") => {
   try {
     cloudinary.api
-      .delete_resources([publicId], { type: "upload", resource_type: "image" })
-      .then(console.log);
+      .delete_resources([publicId], { type: "upload", resource_type: type })
+      .then((data)=>console.log(data));
   } catch (error) {
     console.log(error);
   }
@@ -51,4 +51,4 @@ const getPublicId = (url) => {
   }
 };
 
-export { uploadOnCloudinary, deleteImageOnCloudinray, getPublicId };
+export { uploadOnCloudinary, deleteOnCloudinray, getPublicId };
