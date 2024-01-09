@@ -3,7 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import {
-  deleteImageOnCloudinray,
+  deleteOnCloudinray,
   getPublicId,
   uploadOnCloudinary,
 } from "../utils/cloudinary.js";
@@ -271,7 +271,7 @@ const updateAvatar = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Error while uploading on clodinary");
   }
 
-  const responseOfDelete = await deleteImageOnCloudinray(oldAvatarpublicId);
+  const responseOfDelete = await deleteOnCloudinray(oldAvatarpublicId);
 
   const user = await User.findByIdAndUpdate(
     req.user?._id,
@@ -301,7 +301,7 @@ const updateCoverImage = asyncHandler(async (req, res) => {
   if (!coverImage.url) {
     throw new ApiError(400, "Error while uploading on cloudinary");
   }
-  const deleteResponse = deleteImageOnCloudinray(oldCOverImagePublicId);
+  const deleteResponse = deleteOnCloudinray(oldCOverImagePublicId);
 
   const user = await User.findByIdAndUpdate(
     req.user?._id,
@@ -397,7 +397,7 @@ const getWatchHIstory = asyncHandler(async (req, res) => {
   const user = User.aggregate([
     {
       $match: {
-        _id: new mongoose.Types.ObjectId(user.req?._id),
+        _id: new mongoose.Types.ObjectId(req.user?._id),
       },
     },
     {
