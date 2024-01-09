@@ -53,6 +53,6 @@ router.patch(
 );
 
 router.get("/channel/:username",verifyJWT,getUserChannelInfo);
-router.get("watch-history",verifyJWT,getWatchHIstory);
+router.get("/watch-history",verifyJWT,getWatchHIstory);
 
 export default router;

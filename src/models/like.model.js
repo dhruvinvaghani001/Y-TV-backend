@@ -1,5 +1,6 @@
 import mongoose, { Schema } from "mongoose";
 
+
 const likeSchema = new Schema(
   {
     video: {
@@ -24,4 +25,4 @@ const likeSchema = new Schema(
   }
 );
 
-const Like = mongoose.model("Like", likeSchema);
+export const Like = mongoose.model("Like", likeSchema);
