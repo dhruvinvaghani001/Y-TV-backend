@@ -1,8 +1,7 @@
 import { v2 as cloudinary } from "cloudinary";
+import { extractPublicId } from "cloudinary-build-url";
 import fs from "fs";
 import dotenv from "dotenv";
-
-
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -18,6 +17,7 @@ const uploadOnCloudinary = async (localFilePath) => {
     //upload the file on clodinarry
     const response = await cloudinary.uploader.upload(localFilePath, {
       resource_type: "auto",
+      folder: "youtube",
     });
     //file has been uploaded successfully
     // console.log("file is uploaded on cloudinary");
@@ -31,4 +31,24 @@ const uploadOnCloudinary = async (localFilePath) => {
   }
 };
 
-export { uploadOnCloudinary };
+const deleteImageOnCloudinray = async (publicId) => {
+  try {
+    cloudinary.api
+      .delete_resources([publicId], { type: "upload", resource_type: "image" })
+      .then(console.log);
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+const getPublicId = (url) => {
+  try {
+    const publicId = extractPublicId(url);
+    return publicId;
+  } catch (error) {
+    console.log("cant get public id ", error);
+    return null;
+  }
+};
+
+export { uploadOnCloudinary, deleteImageOnCloudinray, getPublicId };

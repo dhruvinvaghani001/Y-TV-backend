@@ -2,7 +2,11 @@ import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import {
+  deleteImageOnCloudinray,
+  getPublicId,
+  uploadOnCloudinary,
+} from "../utils/cloudinary.js";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 
@@ -138,8 +142,8 @@ const logoutUser = asyncHandler(async (req, res) => {
   await User.findByIdAndUpdate(
     req.user._id,
     {
-      $set: {
-        refreshToken: undefined,
+      $unset: {
+        refreshToken: 1,
       },
     },
     {
@@ -255,6 +259,9 @@ const updateUser = asyncHandler(async (req, res) => {
 
 const updateAvatar = asyncHandler(async (req, res) => {
   const avatarLocalpath = req.file?.path;
+  const oldAvatarUrl = req.user?.avatar;
+
+  const oldAvatarpublicId = getPublicId(oldAvatarUrl);
 
   if (!avatarLocalpath) {
     throw new ApiError(400, "avatar file required");
@@ -263,6 +270,8 @@ const updateAvatar = asyncHandler(async (req, res) => {
   if (!avatar.url) {
     throw new ApiError(400, "Error while uploading on clodinary");
   }
+
+  const responseOfDelete = await deleteImageOnCloudinray(oldAvatarpublicId);
 
   const user = await User.findByIdAndUpdate(
     req.user?._id,
@@ -281,6 +290,9 @@ const updateAvatar = asyncHandler(async (req, res) => {
 
 const updateCoverImage = asyncHandler(async (req, res) => {
   const coverImageLocalPath = req.file?.path;
+  const oldCoverImageUrl = req.user?.coverImage;
+
+  const oldCOverImagePublicId = getPublicId(oldCoverImageUrl);
 
   if (!coverImageLocalPath) {
     throw new ApiError(400, "cover image file required");
@@ -289,6 +301,7 @@ const updateCoverImage = asyncHandler(async (req, res) => {
   if (!coverImage.url) {
     throw new ApiError(400, "Error while uploading on cloudinary");
   }
+  const deleteResponse = deleteImageOnCloudinray(oldCOverImagePublicId);
 
   const user = await User.findByIdAndUpdate(
     req.user?._id,
@@ -432,8 +445,6 @@ const getWatchHIstory = asyncHandler(async (req, res) => {
         "watch histroy get successfully"
       )
     );
-
-    
 });
 
 export {
