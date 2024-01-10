@@ -29,6 +29,14 @@ const updateTweet = asyncHandler(async (req, res) => {
   const { tweetId } = req.params;
   const { content } = req.body;
 
+  const tweet = await Tweet.findById(tweetId);
+  if (!tweet) {
+    throw new ApiError(400, "tweet not found!");
+  }
+  if (tweet.owner != req.user?._id) {
+    throw new ApiError(401, "Unauthorised user!");
+  }
+
   if (!content) {
     throw new ApiError(400, "content is required!");
   }
@@ -56,7 +64,13 @@ const updateTweet = asyncHandler(async (req, res) => {
 
 const deleteTweet = asyncHandler(async (req, res) => {
   const { tweetId } = req.params;
-
+  const tweet = await Tweet.findById(tweetId);
+  if (!tweet) {
+    throw new ApiError(400, "tweet not found!");
+  }
+  if (tweet.owner != req.user?._id) {
+    throw new ApiError(401, "Unauthorised user!");
+  }
   const deletedTweet = await Tweet.findByIdAndDelete(tweetId);
 
   if (!deleteTweet) {
@@ -69,10 +83,11 @@ const deleteTweet = asyncHandler(async (req, res) => {
 });
 
 const getUserTweets = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
   const tweets = await Tweet.aggregate([
     {
-      '$match': {
-        'owner': new mongoose.Types.ObjectId(req.user?._id),
+      $match: {
+        owner: new mongoose.Types.ObjectId(userId),
       },
     },
   ]);
