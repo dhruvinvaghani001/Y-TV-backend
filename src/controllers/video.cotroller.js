@@ -11,36 +11,35 @@ import mongoose from "mongoose";
 
 const getAllVideos = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
- 
+
   const videos = await Video.aggregate([
     {
-      '$match': {
+      $match: {
         query,
       },
     },
     {
-      '$match':{
-        'owner': new mongoose.Types.ObjectId(userId)
-      }
+      $match: {
+        owner: new mongoose.Types.ObjectId(userId),
+      },
     },
     {
-      '$sort': {
+      $sort: {
         [sortBy]: sortType == "asc" ? 1 : -1,
       },
     },
     {
-      '$limit': limit * page,
+      $limit: limit * page,
     },
   ]);
 
   if (!videos) {
-    throw new ApiError(404, "No data found");
+    throw new ApiError(404, "No videos found");
   }
 
   return res
     .status(200)
     .json(new ApiResponse(200, videos, "video fetched successfully !"));
-
 });
 
 const getVideoById = asyncHandler(async (req, res) => {
@@ -106,11 +105,18 @@ const publishVideo = asyncHandler(async (req, res) => {
 const updateVideo = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
   const { title, description } = req.body;
-  if (!videoId) {
-    throw new ApiError(400, "video id required");
-  }
+
   if (!title && !description) {
     throw new ApiError(400, "All fields are required");
+  }
+
+  const videoC = await Video.findById(videoId);
+  if (!videoC) {
+    throw new ApiError(404, "video not found !");
+  }
+
+  if (videoC.owner != req.user?._id) {
+    throw new ApiError(401, "Unauthorised user!");
   }
 
   const thumbnailLocalFilePath = req.file?.path;
@@ -137,6 +143,10 @@ const updateVideo = asyncHandler(async (req, res) => {
     }
   );
 
+  if (!updatedVideo) {
+    throw new ApiError(500, "error while updating video!");
+  }
+
   const publicId = getPublicId(video.thumbnail);
   const deleteres = response?.url ? await deleteOnCloudinray(publicId) : null;
 
@@ -147,7 +157,14 @@ const updateVideo = asyncHandler(async (req, res) => {
 
 const deleteVideo = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
+  const videoC = await Video.findById(videoId);
+  if (!videoC) {
+    throw new ApiError(404, "video not found !");
+  }
 
+  if (videoC.owner != req.user?._id) {
+    throw new ApiError(401, "Unauthorised user!");
+  }
   const deltedVideo = await Video.findByIdAndDelete(videoId);
 
   const thumbnailPublicId = getPublicId(deltedVideo.thumbnail);
@@ -170,6 +187,10 @@ const getUserVideo = asyncHandler(async (req, res) => {
     },
   ]);
 
+  if (videos.length == 0) {
+    throw new ApiError(404, "No videos Found!");
+  }
+
   return res
     .status(200)
     .json(new ApiResponse(200, videos, "All videos of user"));
@@ -177,9 +198,15 @@ const getUserVideo = asyncHandler(async (req, res) => {
 
 const togglePublishStatus = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
-
   const video = await Video.findById(videoId);
+  if (!video) {
+    throw new ApiError(404, "video not found !");
+  }
 
+  if (video.owner != req.user?._id) {
+    throw new ApiError(401, "Unauthorised user!");
+  }
+ 
   video.isPublished = !video.isPublished;
   await video.save();
 
