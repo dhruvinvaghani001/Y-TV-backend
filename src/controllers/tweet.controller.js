@@ -33,7 +33,8 @@ const updateTweet = asyncHandler(async (req, res) => {
   if (!tweet) {
     throw new ApiError(400, "tweet not found!");
   }
-  if (tweet.owner != req.user?._id) {
+   
+  if ((tweet.owner).toString() != (req.user?._id).toString()) {
     throw new ApiError(401, "Unauthorised user!");
   }
 
@@ -68,7 +69,7 @@ const deleteTweet = asyncHandler(async (req, res) => {
   if (!tweet) {
     throw new ApiError(400, "tweet not found!");
   }
-  if (tweet.owner != req.user?._id) {
+  if ((tweet.owner).toString() != (req.user?._id).toString()) {
     throw new ApiError(401, "Unauthorised user!");
   }
   const deletedTweet = await Tweet.findByIdAndDelete(tweetId);

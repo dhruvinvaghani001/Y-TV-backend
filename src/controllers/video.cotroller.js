@@ -88,7 +88,7 @@ const publishVideo = asyncHandler(async (req, res) => {
     videoFile: responseVideoFile.url,
     thumbnail: responseThumbnail.url,
     duration: responseVideoFile.duration,
-    owner: req.user?._id,
+    owner: new mongoose.Types.ObjectId(req.user?._id),
   });
 
   const newVideo = await Video.findById(video._id).select("-owner");
@@ -115,7 +115,7 @@ const updateVideo = asyncHandler(async (req, res) => {
     throw new ApiError(404, "video not found !");
   }
 
-  if (videoC.owner != req.user?._id) {
+  if ((videoC.owner).toString() != (req.user?._id).toString()) {
     throw new ApiError(401, "Unauthorised user!");
   }
 
@@ -162,7 +162,7 @@ const deleteVideo = asyncHandler(async (req, res) => {
     throw new ApiError(404, "video not found !");
   }
 
-  if (videoC.owner != req.user?._id) {
+  if ((videoC.owner).toString() != (req.user?._id).toString()) {
     throw new ApiError(401, "Unauthorised user!");
   }
   const deltedVideo = await Video.findByIdAndDelete(videoId);
@@ -203,7 +203,7 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
     throw new ApiError(404, "video not found !");
   }
 
-  if (video.owner != req.user?._id) {
+  if ((videoC.owner).toString() != (req.user?._id).toString()) {
     throw new ApiError(401, "Unauthorised user!");
   }
  

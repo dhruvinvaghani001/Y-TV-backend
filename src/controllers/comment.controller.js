@@ -57,7 +57,7 @@ const updateComment = asyncHandler(async (req, res) => {
   if (!comment) {
     throw new ApiError(404, "Comment not found");
   }
-  if (comment.owner != req.user?._id) {
+  if ((comment.owner).toString() != (req.user?._id).toString()) {
     throw new ApiError(401, "Unauthorised user!");
   }
 
@@ -94,7 +94,7 @@ const deleteComment = asyncHandler(async (req, res) => {
   if (!comment) {
     throw new ApiError(404, "Comment not found");
   }
-  if (comment.owner != req.user?._id) {
+  if ((comment.owner).toString() != (req.user?._id).toString()) {
     throw new ApiError(401, "Unauthorised user!");
   }
   const deletedComment = await Comment.findByIdAndDelete(commentId);
