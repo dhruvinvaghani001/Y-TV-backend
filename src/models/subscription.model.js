@@ -7,7 +7,7 @@ const subscriptionSchema = new Schema(
       ref: "User",
     },
     channel: {
-      type: Schema.Types.ObjectId,  //which channel subscribed 
+      type: Schema.Types.ObjectId, //which channel subscribed
       ref: "User",
     },
   },
@@ -16,4 +16,4 @@ const subscriptionSchema = new Schema(
 
 const Subscription = mongoose.model("Subscription", subscriptionSchema);
 
-export default Subscription;
+export { Subscription };
