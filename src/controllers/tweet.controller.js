@@ -10,7 +10,7 @@ const addTweet = asyncHandler(async (req, res) => {
   if (!content) {
     throw new ApiError(400, "content is required to tweet !");
   }
-
+  
   const newTweet = await Tweet.create({
     content,
     owner: req.user?._id,
@@ -82,7 +82,44 @@ const deleteTweet = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, {}, "deleted tweet succssfully!"));
 });
-
+[
+  {
+    '$lookup': {
+      'from': 'users', 
+      'localField': 'owner', 
+      'foreignField': '_id', 
+      'as': 'owner', 
+      'pipeline': [
+        {
+          '$project': {
+            'fullname': 1, 
+            'avatar': 1, 
+            'username': 1
+          }
+        }
+      ]
+    }
+  }, {
+    '$lookup': {
+      'from': 'likes', 
+      'localField': '_id', 
+      'foreignField': 'tweet', 
+      'as': 'likeCount'
+    }
+  }, {
+    '$addFields': {
+      'likeCount': {
+        '$size': '$likeCount'
+      }
+    }
+  }, {
+    '$addFields': {
+      'owner': {
+        '$first': '$owner'
+      }
+    }
+  }
+]
 const getUserTweets = asyncHandler(async (req, res) => {
   const { userId } = req.params;
   const tweets = await Tweet.aggregate([
@@ -91,6 +128,43 @@ const getUserTweets = asyncHandler(async (req, res) => {
         owner: new mongoose.Types.ObjectId(userId),
       },
     },
+    {
+      '$lookup': {
+        'from': 'users', 
+        'localField': 'owner', 
+        'foreignField': '_id', 
+        'as': 'owner', 
+        'pipeline': [
+          {
+            '$project': {
+              'fullname': 1, 
+              'avatar': 1, 
+              'username': 1
+            }
+          }
+        ]
+      }
+    },
+    {
+      '$lookup': {
+        'from': 'likes', 
+        'localField': '_id', 
+        'foreignField': 'tweet', 
+        'as': 'likeCount'
+      }
+    },{
+      '$addFields': {
+        'likeCount': {
+          '$size': '$likeCount'
+        }
+      }
+    }, {
+      '$addFields': {
+        'owner': {
+          '$first': '$owner'
+        }
+      }
+    }
   ]);
 
   if (tweets.length == 0) {

@@ -2,20 +2,76 @@ import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { Comment } from "../models/comments.model.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import mongoose from "mongoose";
+import mongoose, { connect, isValidObjectId } from "mongoose";
+import {Video} from "../models/video.model.js";
 
 const getCommetsByVideo = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
-  const { page = 1, limit = 10 } = req.query;
+  let { page = 1, limit = 10 } = req.query;
+
+  page = isNaN(page) ? 1 : Number(page);
+  limit = isNaN(page) ? 10 : Number(limit);
+
+  if (!videoId?.trim() || !isValidObjectId(videoId)) {
+    throw new ApiError(400, "video id is required or valid");
+  }
+
+  //because skip and limit value in aggearagation must be greater than zero
+  if(page <= 0){
+    page = 1
+  }if(limit<=0){
+    limit = 10
+  }
 
   const comments = await Comment.aggregate([
     {
-      $match: {
+     '$match': {
         video: new mongoose.Types.ObjectId(videoId),
       },
     },
     {
-      $limit: page * limit,
+      '$lookup': {
+        'from': 'users', 
+        'localField': 'owner', 
+        'foreignField': '_id', 
+        'as': 'owner', 
+        'pipeline': [
+          {
+            '$project': {
+              'username': 1, 
+              'fullname': 1, 
+              'avatar': 1
+            }
+          }
+        ]
+      }
+    },
+    {
+      '$lookup': {
+        'from': 'likes', 
+        'localField': '_id', 
+        'foreignField': 'comment', 
+        'as': 'likeCount'
+      }
+    },
+    {
+      '$addFields': {
+        'likeCount': {
+          '$size': '$likeCount'
+        }
+      }
+    }, {
+      '$addFields': {
+        'owner': {
+          '$first': '$owner'
+        }
+      }
+    },
+    {
+      '$skip': (page-1)*limit
+    },
+    {
+      '$limit': page ,
     },
   ]);
 
@@ -30,14 +86,24 @@ const getCommetsByVideo = asyncHandler(async (req, res) => {
 const addComment = asyncHandler(async (req, res) => {
   const { content } = req.body;
   const { videoId } = req.params;
-
   if (!content) {
     throw new ApiError(400, "content is required to comment!");
   }
 
+  if(!videoId.trim() || !isValidObjectId(videoId)){
+      throw new ApiError(400,"video id is required or invalid!")
+  }
+
+  const video = await Video.findById(videoId)
+  if(!video){
+    throw new ApiError(404,"video not found to comment!");
+  }
+  
+ 
+
   const newComment = await Comment.create({
     content,
-    video: videoId,
+    video: new mongoose.Types.ObjectId(videoId),
     owner: req.user?._id,
   });
 
@@ -45,24 +111,26 @@ const addComment = asyncHandler(async (req, res) => {
     throw new ApiError(500, "Error while creating comment!");
   }
   return res
-    .status(200)
-    .json(new ApiResponse(200, newComment, "comment created successfully!"));
+    .status(201)
+    .json(new ApiResponse(201, newComment, "comment added to video!"));
 });
 
 const updateComment = asyncHandler(async (req, res) => {
   const { content } = req.body;
   const { commentId } = req.params;
+  if (!content) {
+    throw new ApiError(400, "content required!");
+  }
+  if(!commentId.trim() || !isValidObjectId(commentId)){
+    throw new ApiError(400,"comment id is required or invalid!")
+  }
 
   const comment = await Comment.findById(commentId);
   if (!comment) {
     throw new ApiError(404, "Comment not found");
   }
-  if ((comment.owner).toString() != (req.user?._id).toString()) {
+  if (comment.owner.toString() != (req.user?._id).toString()) {
     throw new ApiError(401, "Unauthorised user!");
-  }
-
-  if (!content) {
-    throw new ApiError(400, "content required!");
   }
 
   const updatedComment = await Comment.findByIdAndUpdate(
@@ -78,7 +146,7 @@ const updateComment = asyncHandler(async (req, res) => {
   );
 
   if (!updatedComment) {
-    throw new ApiError(500, "error while updating comments");
+    throw new ApiError(500, "error while updating comments!");
   }
 
   return res
@@ -90,11 +158,15 @@ const updateComment = asyncHandler(async (req, res) => {
 
 const deleteComment = asyncHandler(async (req, res) => {
   const { commentId } = req.params;
+  if(!commentId.trim() || !isValidObjectId(commentId)){
+    throw new ApiError(400,"comment id is required or invalid!")
+  }
+
   const comment = await Comment.findById(commentId);
   if (!comment) {
     throw new ApiError(404, "Comment not found");
   }
-  if ((comment.owner).toString() != (req.user?._id).toString()) {
+  if (comment.owner.toString() != (req.user?._id).toString()) {
     throw new ApiError(401, "Unauthorised user!");
   }
   const deletedComment = await Comment.findByIdAndDelete(commentId);

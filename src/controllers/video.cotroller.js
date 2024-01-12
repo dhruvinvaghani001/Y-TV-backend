@@ -7,29 +7,98 @@ import {
   uploadOnCloudinary,
 } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import mongoose from "mongoose";
+import mongoose, { isValidObjectId } from "mongoose";
+import { Like } from "../models/like.model.js";
 
 const getAllVideos = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
+  let { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
+
+  page = isNaN(page) ? 1 : Number(page);
+  limit = isNaN(page) ? 10 : Number(limit);
+
+  //because 0 is not accepatabl ein skip and limit in aggearagate pipelien
+  if (page < 0) {
+    page = 1;
+  }
+  if (limit <= 0) {
+    limit = 10;
+  }
+
+  const matchStage = {};
+  if (userId && isValidObjectId(userId)) {
+    matchStage["$match"] = {
+      owner: new mongoose.Types.ObjectId(userId),
+    };
+  } else if (query) {
+    matchStage["$match"] = {
+      $or: [
+        { title: { $regex: query, $options: "i" } },
+        { description: { $regex: query, $options: "i" } },
+      ],
+    };
+  } else {
+    matchStage["$match"] = {};
+  }
+  if (userId && query) {
+    matchStage["$match"] = {
+      $and: [
+        { owner: new mongoose.Types.ObjectId(userId) },
+        {
+          $or: [
+            { title: { $regex: query, $options: "i" } },
+            { description: { $regex: query, $options: "i" } },
+          ],
+        },
+      ],
+    };
+  }
+
+  const sortStage = {};
+  if (sortBy && sortType) {
+    sortStage["$sort"] = {
+      [sortBy]: sortType === "asc" ? 1 : -1,
+    };
+  } else {
+    sortStage["$sort"] = {
+      createdAt: -1,
+    };
+  }
+
+  const skipStage = { $skip: (page - 1) * limit };
+  const limitStage = { $limit: limit };
 
   const videos = await Video.aggregate([
+    matchStage,
     {
-      $match: {
-        query,
+      $lookup: {
+        from: "users",
+        localField: "owner",
+        foreignField: "_id",
+        as: "owner",
+        pipeline: [
+          {
+            $project: {
+              fullname: 1,
+              username: 1,
+              avatar: 1,
+            },
+          },
+        ],
       },
     },
+    sortStage,
     {
-      $match: {
-        owner: new mongoose.Types.ObjectId(userId),
-      },
+      $skip: (page - 1) * limit,
     },
     {
-      $sort: {
-        [sortBy]: sortType == "asc" ? 1 : -1,
-      },
+      $limit: limit,
     },
     {
-      $limit: limit * page,
+      $addFields: {
+        owner: {
+          $first: "$owner",
+        },
+      },
     },
   ]);
 
@@ -44,11 +113,74 @@ const getAllVideos = asyncHandler(async (req, res) => {
 
 const getVideoById = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
-  const video = await Video.findById(videoId);
+  if (!videoId.trim() || !isValidObjectId(videoId)) {
+    throw new ApiError(400, "video id is invalid or requied");
+  }
+
+  let video = await Video.findById(videoId);
 
   if (!video) {
     throw new ApiError(404, "video not found");
   }
+
+  video = await Video.aggregate([
+    {
+      $match: {
+        _id: new mongoose.Types.ObjectId(videoId),
+      },
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "owner",
+        foreignField: "_id",
+        as: "owner",
+        pipeline: [
+          {
+            $project: {
+              username: 1,
+              fullname: 1,
+              avatar: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $lookup: {
+        from: "likes",
+        localField: "_id",
+        foreignField: "video",
+        as: "likes",
+      },
+    },
+    {
+      $addFields: {
+        owner: {
+          $first: "$owner",
+        },
+        likes: {
+          $size: "$likes",
+        },
+      },
+    },
+    {
+      $addFields: {
+        views: {
+          $add: [1, "$views"],
+        },
+      },
+    },
+  ]);
+
+  if (video.length != 0) {
+    video = video[0];
+  }
+  await Video.findByIdAndUpdate(videoId, {
+    $set: {
+      views: video.views,
+    },
+  });
 
   return res
     .status(200)
@@ -58,8 +190,8 @@ const getVideoById = asyncHandler(async (req, res) => {
 const publishVideo = asyncHandler(async (req, res) => {
   const { title, description } = req.body;
 
-  if ([title, description].some((field) => field?.trim() == "")) {
-    throw new ApiError(400, "All fields are required !");
+  if (!title?.trim() || !description?.trim()) {
+    throw new ApiError(400, "Title or description is required!!!");
   }
 
   const thumbnailLocalPath = req.files?.thumbnail[0].path;
@@ -106,6 +238,10 @@ const updateVideo = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
   const { title, description } = req.body;
 
+  if (!videoId.trim() || !isValidObjectId(videoId)) {
+    throw new ApiError(400, "video id is required or invalid !");
+  }
+
   if (!title && !description) {
     throw new ApiError(400, "All fields are required");
   }
@@ -115,7 +251,7 @@ const updateVideo = asyncHandler(async (req, res) => {
     throw new ApiError(404, "video not found !");
   }
 
-  if ((videoC.owner).toString() != (req.user?._id).toString()) {
+  if (videoC.owner.toString() != (req.user?._id).toString()) {
     throw new ApiError(401, "Unauthorised user!");
   }
 
@@ -157,12 +293,17 @@ const updateVideo = asyncHandler(async (req, res) => {
 
 const deleteVideo = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
+
+  if (!videoId.trim() || !isValidObjectId(videoId)) {
+    throw new ApiError(400, "video id is required or invalid !");
+  }
+
   const videoC = await Video.findById(videoId);
   if (!videoC) {
     throw new ApiError(404, "video not found !");
   }
 
-  if ((videoC.owner).toString() != (req.user?._id).toString()) {
+  if (videoC.owner.toString() != (req.user?._id).toString()) {
     throw new ApiError(401, "Unauthorised user!");
   }
   const deltedVideo = await Video.findByIdAndDelete(videoId);
@@ -170,8 +311,16 @@ const deleteVideo = asyncHandler(async (req, res) => {
   const thumbnailPublicId = getPublicId(deltedVideo.thumbnail);
   const videoPublicId = getPublicId(deltedVideo.videoFile);
 
-  const deleteThumbanilResponse = await deleteOnCloudinray(thumbnailPublicId);
-  const deletedVideoResponse = await deleteOnCloudinray(videoPublicId, "video");
+  if (delResponse) {
+    await Promise.all([
+      Like.deleteMany({ video: _id }),
+      Comment.deleteMany({ video: _id }),
+      deleteOnCloudinray(videoPublicId, "video"),
+      deleteOnCloudinray(thumbnailPublicId),
+    ]);
+  } else {
+    throw new ApiError(500, "Something went wrong while deleting video");
+  }
 
   return res
     .status(200)
@@ -198,16 +347,19 @@ const getUserVideo = asyncHandler(async (req, res) => {
 
 const togglePublishStatus = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
+  if (!videoId.trim() || !isValidObjectId(videoId)) {
+    throw new ApiError(400, "video id is required or invalid !");
+  }
   const video = await Video.findById(videoId);
   if (!video) {
     throw new ApiError(404, "video not found !");
   }
 
-  if ((videoC.owner).toString() != (req.user?._id).toString()) {
+  if (video.owner.toString() != (req.user?._id).toString()) {
     throw new ApiError(401, "Unauthorised user!");
   }
- 
-  video.isPublished = !video.isPublished;
+
+  video.isPublished = !(video.isPublished);
   await video.save();
 
   return res.status(200).json(new ApiResponse(200, "toggled state of publish"));
