@@ -9,9 +9,16 @@ dotenv.config({
 
 const app = express();
 
+// app.use(
+//   cors({
+//     origin: process.env.CORS_ORIGIN,
+//     credentials: true,
+//   })
+// );
+
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN,
+    origin: ["http://localhost:3000", "http://localhost:5174"],
     credentials: true,
   })
 );
@@ -32,6 +39,8 @@ import subscribtionRouter from "./routes/subscription.route.js";
 import healthchekcRouter from "./routes/healthcheck.route.js";
 import dashboardRouter from "./routes/dashboard.route.js";
 
+app.use("/videos", express.static("videos"));
+
 app.use("/api/users", userRouter);
 
 app.use("/api/video", viedoRouter);
@@ -44,10 +53,10 @@ app.use("/api/like", likeRouter);
 
 app.use("/api/playlist", playlistRouter);
 
-app.use("/api/subscribe",subscribtionRouter);
+app.use("/api/subscribe", subscribtionRouter);
 
-app.use("/api/dashboard",dashboardRouter);
+app.use("/api/dashboard", dashboardRouter);
 
-app.use("/api/healthcheck",healthchekcRouter);
+app.use("/api/healthcheck", healthchekcRouter);
 
 export default app;

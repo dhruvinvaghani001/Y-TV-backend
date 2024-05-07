@@ -32,6 +32,34 @@ const uploadOnCloudinary = async (localFilePath) => {
   }
 };
 
+const uploadVideoOnClodinray = async (localFilePath) => {
+  try {
+    if (!localFilePath) {
+      return null;
+    }
+    //upload the file on clodinarry
+    const response = await cloudinary.uploader.upload(videoPath, {
+      resource_type: "video",
+      folder: "youtube",
+      eager: [
+        { streaming_profile: "full_hd", format: "m3u8" },
+        { streaming_profile: "full_hd", format: "mpd" },
+      ],
+      eager_async: true,
+    });
+    console.log(result);
+    //file has been uploaded successfully
+    // console.log("file is uploaded on cloudinary");
+    // console.log(response.url);
+    fs.unlinkSync(localFilePath);
+    // console.log("clodinary responmse:",response);
+    return response;
+  } catch (error) {
+    fs.unlinkSync(localFilePath); //remove the localy saved temp file as the upload failed
+    return null;
+  }
+};
+
 const deleteOnCloudinray = async (publicId, type = "image") => {
   try {
     cloudinary.api
@@ -52,4 +80,9 @@ const getPublicId = (url) => {
   }
 };
 
-export { uploadOnCloudinary, deleteOnCloudinray, getPublicId };
+export {
+  uploadOnCloudinary,
+  deleteOnCloudinray,
+  getPublicId,
+  uploadVideoOnClodinray,
+};
