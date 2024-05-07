@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose, { isValidObjectId } from "mongoose";
 import { Playlist } from "../models/playlist.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -15,19 +15,19 @@ const getPlaylistById = asyncHandler(async (req, res) => {
 
   const pipeline = [
     {
-      '$match': {
+      $match: {
         _id: new mongoose.Types.ObjectId(playlistId),
       },
     },
     {
-      '$lookup': {
+      $lookup: {
         from: "videos",
         localField: "videos",
         foreignField: "_id",
         as: "playlistVideo",
         pipeline: [
           {
-            '$project': {
+            $project: {
               thumbnail: 1,
               videoFile: 1,
               title: 1,
@@ -40,7 +40,7 @@ const getPlaylistById = asyncHandler(async (req, res) => {
       },
     },
     {
-      '$project': {
+      $project: {
         name: 1,
         description: 1,
         playlistVideo: 1,
@@ -59,23 +59,33 @@ const getPlaylistById = asyncHandler(async (req, res) => {
 });
 
 const getUserPlaylist = asyncHandler(async (req, res) => {
-  const {userId} = req.params;
+  const { userId } = req.params;
+  if (!userId.trim() || !isValidObjectId(userId)) {
+    throw new ApiError(400, "userid is required or invalid!");
+  }
+  const playlistCheck = await Playlist.find({
+    owner: new mongoose.Types.ObjectId(userId),
+  });
+  
+  if (!playlistCheck) {
+    throw new ApiError(400, "playlist not found!");
+  }
 
   const pipeline = [
     {
-      '$match': {
-        owner : new mongoose.Types.ObjectId(userId),
+      $match: {
+        owner: new mongoose.Types.ObjectId(userId),
       },
     },
     {
-      '$lookup': {
+      $lookup: {
         from: "videos",
         localField: "videos",
         foreignField: "_id",
         as: "playlistVideo",
         pipeline: [
           {
-            '$project': {
+            $project: {
               thumbnail: 1,
               videoFile: 1,
               title: 1,
@@ -88,21 +98,27 @@ const getUserPlaylist = asyncHandler(async (req, res) => {
       },
     },
     {
-      '$project': {
+      $project: {
         name: 1,
         description: 1,
         playlistVideo: 1,
+      },
+    },
+    {
+      $sort: {
+        createdAt: -1,
       },
     },
   ];
 
   const playlist = await Playlist.aggregate(pipeline);
 
-  if(playlist.length == 0 ){
-    throw new ApiError(404,"playlist not found!");
+  if (playlist.length == 0) {
+    throw new ApiError(404, "playlist not found!");
   }
-  return res.status(200).json(new ApiResponse(200,playlist,"playlist fetched successfully!"))
-
+  return res
+    .status(200)
+    .json(new ApiResponse(200, playlist, "playlist fetched successfully!"));
 });
 
 const createPlaylist = asyncHandler(async (req, res) => {
@@ -131,17 +147,20 @@ const updatePlaylist = asyncHandler(async (req, res) => {
   const { playlistId } = req.params;
   const { name, description } = req.body;
 
-  if (!name && !description) {
-    throw new ApiError(400, "name and description are required!");
+  if (!playlistId.trim() || !isValidObjectId(playlistId)) {
+    throw new ApiError(400, "playlist id is required or invalid!");
   }
   const playlist = await Playlist.findById(playlistId);
 
   if (!playlist) {
     throw new ApiError(404, "playlist not found!");
   }
+  if (playlist.owner?.toString() != req.user._id.toString()) {
+    throw new ApiError(401, "Unauthorised user!");
+  }
 
-  if (playlist.owner.toString() != (req.user?._id).toString()) {
-    throw new ApiError(401, "Unauthorised user");
+  if (!name && !description) {
+    throw new ApiError(400, "name and description are required!");
   }
 
   const updtedPlaylist = await Playlist.findByIdAndUpdate(
@@ -164,6 +183,9 @@ const updatePlaylist = asyncHandler(async (req, res) => {
 const deletePlaylist = asyncHandler(async (req, res) => {
   const { playlistId } = req.params;
 
+  if (!playlistId.trim() || !isValidObjectId(playlistId)) {
+    throw new ApiError(400, "playlist id is required or invalid!");
+  }
   const playlist = await Playlist.findById(playlistId);
 
   if (!playlist) {
@@ -183,16 +205,22 @@ const deletePlaylist = asyncHandler(async (req, res) => {
 const addVideoToPlaylist = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
   const { playlistId } = req.params;
-
-  const playlist = await Playlist.findById(playlistId);
+  if (!playlistId.trim() || !isValidObjectId(playlistId)) {
+    throw new ApiError(400, "playlist id is required or invalid!");
+  }
+  if (!videoId.trim() || !isValidObjectId(videoId)) {
+    throw new ApiError(400, "video id is required or invalid!");
+  }
   const video = await Video.findById(videoId);
+  if (!video) {
+    throw new ApiError(404, "video not found!");
+  }
+  const playlist = await Playlist.findById(playlistId);
 
   if (!playlist) {
     throw new ApiError(404, "playlist not found!");
   }
-  if (!video) {
-    throw new ApiError(404, "video not found!");
-  }
+
   if (playlist.owner.toString() != (req.user?._id).toString()) {
     throw new ApiError(401, "Unauthorised User!");
   }
@@ -223,16 +251,21 @@ const addVideoToPlaylist = asyncHandler(async (req, res) => {
 const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
   const { playlistId } = req.params;
-
-  const playlist = await Playlist.findById(playlistId);
-  const video = await Video.findById(videoId);
-
-  if (!playlist) {
-    throw new ApiError(404, "playlist not found!");
+  if (!playlistId.trim() || !isValidObjectId(playlistId)) {
+    throw new ApiError(400, "playlist id is required or invalid!");
   }
+  if (!videoId.trim() || !isValidObjectId(videoId)) {
+    throw new ApiError(400, "video id is required or invalid!");
+  }
+  const video = await Video.findById(videoId);
   if (!video) {
     throw new ApiError(404, "video not found!");
   }
+  const playlist = await Playlist.findById(playlistId);
+  if (!playlist) {
+    throw new ApiError(404, "playlist not found!");
+  }
+
   if (playlist.owner.toString() != (req.user?._id).toString()) {
     throw new ApiError(401, "UNauthorised user!");
   }

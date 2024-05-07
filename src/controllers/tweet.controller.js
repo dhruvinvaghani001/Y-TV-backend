@@ -82,44 +82,7 @@ const deleteTweet = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, {}, "deleted tweet succssfully!"));
 });
-[
-  {
-    '$lookup': {
-      'from': 'users', 
-      'localField': 'owner', 
-      'foreignField': '_id', 
-      'as': 'owner', 
-      'pipeline': [
-        {
-          '$project': {
-            'fullname': 1, 
-            'avatar': 1, 
-            'username': 1
-          }
-        }
-      ]
-    }
-  }, {
-    '$lookup': {
-      'from': 'likes', 
-      'localField': '_id', 
-      'foreignField': 'tweet', 
-      'as': 'likeCount'
-    }
-  }, {
-    '$addFields': {
-      'likeCount': {
-        '$size': '$likeCount'
-      }
-    }
-  }, {
-    '$addFields': {
-      'owner': {
-        '$first': '$owner'
-      }
-    }
-  }
-]
+
 const getUserTweets = asyncHandler(async (req, res) => {
   const { userId } = req.params;
   const tweets = await Tweet.aggregate([

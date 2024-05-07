@@ -7,6 +7,7 @@ cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
+  secure: true,
 });
 
 const uploadOnCloudinary = async (localFilePath) => {
@@ -31,11 +32,11 @@ const uploadOnCloudinary = async (localFilePath) => {
   }
 };
 
-const deleteOnCloudinray = async (publicId,type="image") => {
+const deleteOnCloudinray = async (publicId, type = "image") => {
   try {
     cloudinary.api
       .delete_resources([publicId], { type: "upload", resource_type: type })
-      .then((data)=>console.log(data));
+      .then((data) => console.log(data));
   } catch (error) {
     console.log(error);
   }

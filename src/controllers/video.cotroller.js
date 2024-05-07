@@ -86,6 +86,14 @@ const getAllVideos = asyncHandler(async (req, res) => {
         ],
       },
     },
+    {
+      $lookup:{
+        from:"likes",
+        localField:"_id",
+        foreignField:"video",
+        as:"likes"
+      }
+    },
     sortStage,
     {
       $skip: (page - 1) * limit,
@@ -98,6 +106,9 @@ const getAllVideos = asyncHandler(async (req, res) => {
         owner: {
           $first: "$owner",
         },
+        likes:{
+          $size:"$likes"
+        }
       },
     },
   ]);
