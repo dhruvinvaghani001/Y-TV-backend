@@ -9,6 +9,10 @@ import {
 import { ApiResponse } from "../utils/ApiResponse.js";
 import mongoose, { isValidObjectId } from "mongoose";
 import { Like } from "../models/like.model.js";
+import { v4 as uuidv4 } from "uuid";
+import fs from "fs";
+import { exec } from "child_process";
+import { v2 as cloudinary } from "cloudinary";
 
 const getAllVideos = asyncHandler(async (req, res) => {
   let { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
@@ -87,12 +91,12 @@ const getAllVideos = asyncHandler(async (req, res) => {
       },
     },
     {
-      $lookup:{
-        from:"likes",
-        localField:"_id",
-        foreignField:"video",
-        as:"likes"
-      }
+      $lookup: {
+        from: "likes",
+        localField: "_id",
+        foreignField: "video",
+        as: "likes",
+      },
     },
     sortStage,
     {
@@ -106,9 +110,9 @@ const getAllVideos = asyncHandler(async (req, res) => {
         owner: {
           $first: "$owner",
         },
-        likes:{
-          $size:"$likes"
-        }
+        likes: {
+          $size: "$likes",
+        },
       },
     },
   ]);
@@ -204,7 +208,29 @@ const publishVideo = asyncHandler(async (req, res) => {
   if (!title?.trim() || !description?.trim()) {
     throw new ApiError(400, "Title or description is required!!!");
   }
+  // const uniqueId = uuidv4();
+  // const outputPath = `./videos/${uniqueId}`;
+  // const hlsPath = `${outputPath}/index.m3u8`;
 
+  // if (!fs.existsSync(outputPath)) {
+  //   fs.mkdirSync(outputPath, { recursive: true });
+  // }
+  // console.log("VIDEOPATH", videoPath);
+  // const ffmpegCommand = `ffmpeg -i ${videoPath} -codec:v libx264 -codec:a aac -hls_time 10 -hls_playlist_type vod -hls_segment_filename "${outputPath}/segment%03d.ts" -start_number 0 ${hlsPath}`;
+
+  // exec(ffmpegCommand, (error, stdout, stderr) => {
+  //   if (error) {
+  //     console.error(`exec error: ${error}`);
+  //     return;
+  //   }
+  //   console.log(`stdout: ${stdout}`);
+  //   console.log(`stderr: ${stderr}`);
+  //   res.json({
+  //     message: "Video converted to HLS format",
+  //     // videoUrl: videoUrl,
+  //     // lessonId: lessonId,
+  //   });
+  // });
   const thumbnailLocalPath = req.files?.thumbnail[0].path;
   const videoFileLocalPath = req.files?.videoFile[0].path;
 
@@ -228,7 +254,7 @@ const publishVideo = asyncHandler(async (req, res) => {
   const video = await Video.create({
     title: title,
     description,
-    videoFile: responseVideoFile.url,
+    videoFile: responseVideoFile.playback_url,
     thumbnail: responseThumbnail.url,
     duration: responseVideoFile.duration,
     owner: new mongoose.Types.ObjectId(req.user?._id),
@@ -370,7 +396,7 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
     throw new ApiError(401, "Unauthorised user!");
   }
 
-  video.isPublished = !(video.isPublished);
+  video.isPublished = !video.isPublished;
   await video.save();
 
   return res.status(200).json(new ApiResponse(200, "toggled state of publish"));
