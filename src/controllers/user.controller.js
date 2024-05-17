@@ -27,7 +27,6 @@ const genrateAcessAndRefreshToken = async (userId) => {
 const registerUser = asyncHandler(async (req, res) => {
   //get details from frontend
   const { username, email, fullname, password } = req.body;
-  console.log(username, email, fullname, password);
   //validation
   if (
     [username, email, password, fullname].some(
@@ -37,11 +36,23 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(400, "All fields are required !");
   }
   //user alredy exist
-  const existedUser = await User.findOne({
-    $or: [{ username: username, email: email }],
-  });
-  console.log("Existed user :", existedUser);
-  if (existedUser) {
+  const existUserPipeline = [
+    {
+      $match: {
+        $or: [
+          {
+            username: username,
+          },
+          {
+            email: email,
+          },
+        ],
+      },
+    },
+  ];
+  const existedUser = await User.aggregate(existUserPipeline);
+  console.log(existedUser);
+  if (existedUser.length > 0) {
     throw new ApiError(409, "User with email or username already exists");
   }
   // console.log("files:",req.files);
