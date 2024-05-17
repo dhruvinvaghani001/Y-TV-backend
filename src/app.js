@@ -9,19 +9,27 @@ dotenv.config({
 
 const app = express();
 
-// app.use(
-//   cors({
-//     origin: process.env.CORS_ORIGIN,
-//     credentials: true,
-//   })
-// );
-
 app.use(
   cors({
     origin: ["http://localhost:3000", "http://localhost:5174"],
     credentials: true,
   })
 );
+
+app.use((err, req, res, next) => {
+  if (err instanceof ApiError) {
+    return res.status(err.statusCode).json({
+      success: err.success,
+      message: err.message,
+      errors: err.errors,
+    });
+  } else {
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+});
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
@@ -38,6 +46,8 @@ import playlistRouter from "./routes/playlist.route.js";
 import subscribtionRouter from "./routes/subscription.route.js";
 import healthchekcRouter from "./routes/healthcheck.route.js";
 import dashboardRouter from "./routes/dashboard.route.js";
+
+// Error handling middleware
 
 app.use("/videos", express.static("videos"));
 
