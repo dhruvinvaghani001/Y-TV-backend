@@ -46,8 +46,7 @@ import playlistRouter from "./routes/playlist.route.js";
 import subscribtionRouter from "./routes/subscription.route.js";
 import healthchekcRouter from "./routes/healthcheck.route.js";
 import dashboardRouter from "./routes/dashboard.route.js";
-
-// Error handling middleware
+import { ApiError } from "./utils/ApiError.js";
 
 app.use("/videos", express.static("videos"));
 
@@ -68,5 +67,20 @@ app.use("/api/subscribe", subscribtionRouter);
 app.use("/api/dashboard", dashboardRouter);
 
 app.use("/api/healthcheck", healthchekcRouter);
+
+app.use((err, req, res, next) => {
+  if (err instanceof ApiError) {
+    res.status(err.statusCode).json({
+      success: err.success,
+      message: err.message,
+      errors: err.errors,
+    });
+  } else {
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+});
 
 export default app;
