@@ -9,6 +9,7 @@ import {
 } from "../utils/cloudinary.js";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
+import bcrypt from "bcrypt";
 
 const genrateAcessAndRefreshToken = async (userId) => {
   try {
@@ -461,6 +462,31 @@ const getWatchHIstory = asyncHandler(async (req, res) => {
     );
 });
 
+const getUser = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+  const user = await User.aggregate([
+    {
+      $match: {
+        email: email,
+      },
+    },
+  ]);
+  const existUser = user[0];
+  console.log(existUser);
+  if (!existUser) {
+    throw new ApiError(404, "user does nmot found!");
+  }
+
+  const passCheck = await bcrypt.compare(password, existUser.password);
+  if (passCheck) {
+    return res
+      .status(200)
+      .json(new ApiResponse(200, existUser, "user get successfully!"));
+  } else {
+    throw new ApiError(409, "incorrrect password");
+  }
+});
+
 export {
   registerUser,
   loginUser,
@@ -473,4 +499,5 @@ export {
   updateCoverImage,
   getUserChannelInfo,
   getWatchHIstory,
+  getUser,
 };

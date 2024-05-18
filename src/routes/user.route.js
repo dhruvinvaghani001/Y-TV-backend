@@ -11,6 +11,7 @@ import {
   updateAvatar,
   updateCoverImage,
   updateUser,
+  getUser
 } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -34,6 +35,8 @@ router.post(
 );
 
 router.post("/login", loginUser);
+
+router.post("/get-user", getUser);
 
 //secured routes
 router.post("/logout", verifyJWT, logoutUser);

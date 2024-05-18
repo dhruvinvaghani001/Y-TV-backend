@@ -16,21 +16,6 @@ app.use(
   })
 );
 
-app.use((err, req, res, next) => {
-  if (err instanceof ApiError) {
-    return res.status(err.statusCode).json({
-      success: err.success,
-      message: err.message,
-      errors: err.errors,
-    });
-  } else {
-    return res.status(500).json({
-      success: false,
-      message: "Internal Server Error",
-    });
-  }
-});
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(express.static("public"));
