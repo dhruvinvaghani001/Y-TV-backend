@@ -29,9 +29,10 @@ const registerUser = asyncHandler(async (req, res) => {
   //get details from frontend
   const { username, email, fullname, password } = req.body;
   //validation
+  console.log(username, email, password, fullname);
   if (
     [username, email, password, fullname].some(
-      (field) => field?.trim() == undefined
+      (field) => field?.trim() === undefined
     )
   ) {
     throw new ApiError(400, "All fields are required !");
@@ -51,6 +52,7 @@ const registerUser = asyncHandler(async (req, res) => {
       },
     },
   ];
+
   const existedUser = await User.aggregate(existUserPipeline);
   console.log(existedUser);
   if (existedUser.length > 0) {
@@ -58,35 +60,35 @@ const registerUser = asyncHandler(async (req, res) => {
   }
   // console.log("files:",req.files);
   //avtar file and cover file
-  const avatarLocalPath = req.files?.avatar[0].path;
+  // const avatarLocalPath = req.files?.avatar[0].path;
   // const coverImageLocalPath = req.files?.coverImage[0].path;
-  let coverImageLocalPath = "";
-  if (
-    req.files &&
-    Array.isArray(req.files.coverImage) &&
-    req.files.coverImage.length > 0
-  ) {
-    coverImageLocalPath = req.files.coverImage[0].path;
-  }
+  // let coverImageLocalPath = "";
+  // if (
+  //   req.files &&
+  //   Array.isArray(req.files.coverImage) &&
+  //   req.files.coverImage.length > 0
+  // ) {
+  //   coverImageLocalPath = req.files.coverImage[0].path;
+  // }
 
-  if (!avatarLocalPath) {
-    throw new ApiError(400, "Avatar is required ");
-  }
+  // if (!avatarLocalPath) {
+  //   throw new ApiError(400, "Avatar is required ");
+  // }
   //upload on cloudinary
-  const avatar = await uploadOnCloudinary(avatarLocalPath);
-  const coverImage = await uploadOnCloudinary(coverImageLocalPath);
+  // const avatar = await uploadOnCloudinary(avatarLocalPath);
+  // const coverImage = await uploadOnCloudinary(coverImageLocalPath);
 
-  if (!avatar) {
-    throw new ApiError(400, "Avatar file is required");
-  }
+  // if (!avatar) {
+  //   throw new ApiError(400, "Avatar file is required");
+  // }
   //create user object and create entry in mongodb
   const user = await User.create({
     fullname,
     email,
     password,
     username: username.toLowerCase(),
-    avatar: avatar.url,
-    coverImage: coverImage?.url || "",
+    avatar: `https://avatars.abstractapi.com/v1/?api_key=d232541fdfc546d989ad961e58f4c5a3&name=${username}`,
+    coverImage: "",
   });
 
   //remove password and refrewshtoken

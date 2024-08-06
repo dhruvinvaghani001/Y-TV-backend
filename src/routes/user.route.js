@@ -11,7 +11,7 @@ import {
   updateAvatar,
   updateCoverImage,
   updateUser,
-  getUser
+  getUser,
 } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -19,20 +19,7 @@ import { verifyJWT } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
-router.post(
-  "/register",
-  upload.fields([
-    {
-      name: "avatar",
-      maxCount: 1,
-    },
-    {
-      name: "coverImage",
-      maxCount: 1,
-    },
-  ]),
-  registerUser
-);
+router.post("/register", registerUser);
 
 router.post("/login", loginUser);
 
@@ -55,7 +42,7 @@ router.patch(
   updateCoverImage
 );
 
-router.get("/channel/:username",verifyJWT,getUserChannelInfo);
-router.get("/watch-history",verifyJWT,getWatchHIstory);
+router.get("/channel/:username", verifyJWT, getUserChannelInfo);
+router.get("/watch-history", verifyJWT, getWatchHIstory);
 
 export default router;
